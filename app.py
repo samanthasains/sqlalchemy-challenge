@@ -1,5 +1,4 @@
 from flask import Flask, jsonify
-import numpy as np
 import datetime as dt
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
@@ -37,7 +36,15 @@ usage_dict = [
 
 @app.route("/")
 def home():
-    return jsonify(usage_dict)
+    return  (
+        f"Welcome & please find instructions for use to find our information about weather in Hawaii!<br/>"
+        f"Available Routes are listed below:<br/>"
+        f"Precipitation data by date: /api/v1.0/precipitation<br/>"
+        f"List of Weather Stations: /api/v1.0/stations<br/>"
+        f"Temperature for the last year recorded: /api/v1.0/tobs<br/>"
+        f"Temperature statistics from the start date between 2010-01-01 and 2017-08-23 using the following format (yyyy-mm-dd): /api/v1.0/yyyy-mm-dd<br/>"
+        f"Temperature statistics from start to end date between 2010-01-01 and 2017-08-23 using the following format (yyyy-mm-dd): /api/v1.0/yyyy-mm-dd/yyyy-mm-dd"
+    )
 
 #Define precipitation page
 @app.route("/api/v1.0/precipitation")
@@ -108,7 +115,7 @@ def tobs():
 
     temp_data = session.query(*data_temp).\
         filter(Measurement.station == most_active_id).\
-            filter(Measurement.date >= last_year_date).all()
+        filter(Measurement.date >= last_year_date).all()
 
     session.close()
 
@@ -129,17 +136,11 @@ def start_date(start):
     
     # Create our session (link) from Python to the DB
     session = Session(engine)
-
-    #Convert date
-    start= dt.datetime.strptime(start, '%Y-%m-%d')
     
     #Query info
-    results =   session.query(  Measurement.date,\
-                                func.min(Measurement.tobs), \
-                                func.avg(Measurement.tobs), \
-                                func.max(Measurement.tobs)).\
+    results = session.query(Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
                         filter(Measurement.date >= start).\
-                        group_by(Measurement.date).all()    
+                            group_by(Measurement.date).all()
     
     session.close()
     
@@ -158,9 +159,34 @@ def start_date(start):
     return jsonify(temp_summary_dict)
 
 # #Define page to return date range
-# @app.route("/api/v1.0/<start>/<end>")
-# def jsonified():
-#     return jsonify(justice_league_members)
+@app.route("/api/v1.0/<start>/<end>")
+def start_end(start, end):
+    
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    
+    #Query info
+    results = session.query(Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+                        filter(Measurement.date >= start).\
+                            filter(Measurement.date <= end).\
+                        group_by(Measurement.date).all()    
+    
+    session.close()
+    
+    #Write to dictionary
+    temp_summary_dict = []
+    
+    for date, min, avg, max in results:
+        new_dict = {}
+        new_dict["Date"] = date
+        new_dict["Temp Min"] = min
+        new_dict["Temp Average"] = avg
+        new_dict["Max Temp"] = max
+        temp_summary_dict.append(new_dict)
+
+
+    return jsonify(temp_summary_dict)
+    
 
 if __name__ == "__main__":
     app.run(host='127.0.0.1', port=5000)
