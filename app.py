@@ -25,15 +25,6 @@ session = Session(engine)
 app=Flask(__name__)
 
 #Define home page - create a list of each route and what it shows
-# Dictionary of all the routes
-usage_dict = [
-    {"route": "/api/v1.0/precipitation", "info": "Precipitation data by date"},
-    {"route": "/api/v1.0/stations", "info": "List of weather stations"},
-    {"route": "/api/v1.0/tobs", "info": "Temperature observation by date in last year"},
-    {"route": "/api/v1.0/<start>", "info": "Find weather information for a given date"},
-    {"route": "/api/v1.0/<start>/<end>", "info": "Find weather information for a given date ranges"}
-]
-
 @app.route("/")
 def home():
     return  (
@@ -59,13 +50,10 @@ def precipitation():
     session.close()
     
     #Write prcp info to dict
-    prcp_dict=[]
+    prcp_dict={}
     
     for date, prcp in prcp_data:
-        entry_dict = {}
-        entry_dict['Date'] = date
-        entry_dict['Precipitation'] = prcp
-        prcp_dict.append(entry_dict)
+        prcp_dict[date] = prcp
 
     return jsonify(prcp_dict)
 
@@ -89,7 +77,7 @@ def stations():
     
     return jsonify(station_names)
 
-# #Define page to show last year of data for most active stations
+# #Define page to show last year of data for most active station
 @app.route("/api/v1.0/tobs")
 def tobs():
     
@@ -138,7 +126,7 @@ def start_date(start):
     session = Session(engine)
     
     #Query info
-    results = session.query(Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+    results = session.query(Measurement.date, func.max(Measurement.tobs), func.min(Measurement.tobs), func.avg(Measurement.tobs)).\
                         filter(Measurement.date >= start).\
                             group_by(Measurement.date).all()
     
@@ -147,12 +135,12 @@ def start_date(start):
     #Write to dictionary
     temp_summary_dict = []
     
-    for date, min, avg, max in results:
+    for date, max, min, avg in results:
         new_dict = {}
         new_dict["Date"] = date
-        new_dict["Temp Min"] = min
-        new_dict["Temp Average"] = avg
         new_dict["Max Temp"] = max
+        new_dict["Min Temp"] = min
+        new_dict["Temp Average"] = avg
         temp_summary_dict.append(new_dict)
 
 
@@ -166,7 +154,7 @@ def start_end(start, end):
     session = Session(engine)
     
     #Query info
-    results = session.query(Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+    results = session.query(Measurement.date, func.max(Measurement.tobs), func.min(Measurement.tobs), func.avg(Measurement.tobs)).\
                         filter(Measurement.date >= start).\
                             filter(Measurement.date <= end).\
                         group_by(Measurement.date).all()    
@@ -176,12 +164,12 @@ def start_end(start, end):
     #Write to dictionary
     temp_summary_dict = []
     
-    for date, min, avg, max in results:
+    for date, max, min, avg in results:
         new_dict = {}
         new_dict["Date"] = date
-        new_dict["Temp Min"] = min
-        new_dict["Temp Average"] = avg
         new_dict["Max Temp"] = max
+        new_dict["Min Temp"] = min
+        new_dict["Temp Average"] = avg
         temp_summary_dict.append(new_dict)
 
 
